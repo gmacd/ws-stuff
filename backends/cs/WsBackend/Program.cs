@@ -30,6 +30,7 @@ namespace WsBackend
                 OnDisconnect = ctx => server.OnDisconnect(ctx),
                 OnSend = ctx => server.OnSend(ctx),
                 OnReceive = ctx => server.OnReceive(ctx),
+                TimeOut = TimeSpan.FromHours(1),
             };
 
             wsServer.Start();

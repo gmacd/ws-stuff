@@ -40,5 +40,9 @@ services.factory("ChatService", ['$q', '$rootScope', function($q, $rootScope) {
 		console.log(JSON.parse(message.data));
 	};
 
+	service.SendMessage = function (message) {
+		service.WebSocket.send(message);
+	};
+
 	return service;
 }]);

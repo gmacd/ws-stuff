@@ -1,0 +1,16 @@
+#chatview
+{
+	overflow:scroll;
+	height:80%;
+	width:100%;
+	position:absolute;
+}
+
+#msg
+{
+	width:100%;
+	height:20%;
+	position:absolute;
+	top:80%;
+	bottom:100%;
+}

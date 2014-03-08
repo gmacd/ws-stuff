@@ -1,11 +1,13 @@
 ﻿using Alchemy;
 using Alchemy.Classes;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,14 +17,12 @@ namespace WsBackend
     class User
     {
         public string Name { get; private set; }
-        public bool Dummy { get; private set; }
         public bool Online { get; set; }
 
-        public User(string name, bool dummy = false)
+        public User(string name)
         {
             Name = name;
             Online = false;
-            Dummy = dummy;
             // Photo, details, etc
         }
     }
@@ -47,7 +47,7 @@ namespace WsBackend
     {
         ConcurrentDictionary<UserContext, User> _users = new ConcurrentDictionary<UserContext, User>();
         object _usersLock = new object();
-        Random _userRnd = new Random();
+        ulong _nextNewUserId = 0;
 
         List<Message> _messages = new List<Message>();
         object _messagesLock = new object();
@@ -56,11 +56,11 @@ namespace WsBackend
         public Server()
         {
             // Add a couple of test messages to test snapshot
-            var user1 = new User("dummy1", true);
-            var dummyContext1 = new UserContext(new Context(null, new System.Net.Sockets.TcpClient("www.bbc.co.uk", 80)));
+            var user1 = new User("dummy1");
+            var dummyContext1 = new UserContext(new Context(null, new TcpClient("www.bbc.co.uk", 80)));
             _users[dummyContext1] = user1;
-            var user2 = new User("dummy2", true);
-            var dummyContext2 = new UserContext(new Context(null, new System.Net.Sockets.TcpClient("www.bbc.co.uk", 443)));
+            var user2 = new User("dummy2");
+            var dummyContext2 = new UserContext(new Context(null, new TcpClient("www.bbc.co.uk", 443)));
             _users[dummyContext2] = user2;
 
             AddMessage(user1, "Hello world");
@@ -84,11 +84,11 @@ namespace WsBackend
         public void OnConnected(UserContext context)
         {
             Console.WriteLine("Connected: " + context.ClientAddress.ToString());
-            var newUser = AddUniqueUser(context);
-            if (newUser != null)
-                Console.WriteLine("  Added user: " + newUser.Name);
+            var user = RegisterUser(context);
+            if (user != null)
+                Console.WriteLine("  Registered user: " + user.Name);
             else
-                Console.WriteLine("  Failed to add new user.");
+                Console.WriteLine("  Failed to register user.");
 
             var messages = _messages.Select(m => new { Msg = m.Text, User = m.User.Name});
             var snapshot = JsonConvert.SerializeObject(new { Type = "snapshot", Msgs = messages });
@@ -108,28 +108,37 @@ namespace WsBackend
         public void OnReceive(UserContext context)
         {
             Console.WriteLine("Receive: " + context.ClientAddress.ToString());
+            var msg = (JObject)JsonConvert.DeserializeObject(context.DataFrame.ToString());
+
+            JToken type;
+            if (msg.TryGetValue("Type", out type) && type.Value<string>() == "newMsg")
+            {
+                JToken message;
+                if (msg.TryGetValue("Message", out message))
+                {
+                    var newMessage = AddMessage(_users[context], message.Value<string>());
+                    BroadcastMessage(newMessage, context);
+                }
+            }
         }
 
-        User AddUniqueUser(UserContext context)
+        /// <summary>
+        /// If the user has previously registered, change account to online,
+        /// if the user is new, create a new unique account
+        /// </summary>
+        User RegisterUser(UserContext context)
         {
             lock (_usersLock)
             {
-                // If we can't add a new user after 1000 attempts (in this case)
-                // of generating a random number, we've probably got bigger
-                // problems (and would log it).
-                var existingNames = new HashSet<string>(_users.Values.Select(u => u.Name));
-                for (var i = 0; i < 1000; i++)
-                {
-                    var name = "User " + _userRnd.Next();
-                    if (!existingNames.Contains(name))
-                    {
-                        return _users.AddOrUpdate(
-                            context,
-                            new User(name),
-                            (addr, oldUser) => new User(name));
-                    }
-                }
-                return null;
+                var user = _users.GetOrAdd(
+                    context,
+                    ctx => {
+                        var name = "NewUser" + _nextNewUserId;
+                        _nextNewUserId++;
+                        return new User(name);
+                    });
+                user.Online = true;
+                return user;
             }
         }
 
@@ -143,18 +152,25 @@ namespace WsBackend
             return message;
         }
 
-        void BroadcastMessage(Message message)
+        /// <summary>
+        /// Broadcast message to all users.  If except is not null, then
+        /// this user will be excluded from the broadcast.
+        /// </summary>
+        void BroadcastMessage(Message message, UserContext except = null)
         {
             lock (_usersLock)
             {
                 var messageJson = JsonConvert.SerializeObject(
                     new { Type = "msg", Msg = message.Text, User = message.User.Name });
-                var realUserContexts =
+                var onlineUserContexts =
                     _users
-                    .Where(kvp => !kvp.Value.Dummy)
+                    .Where(kvp => kvp.Value.Online)
                     .Select(kvp => kvp.Key);
-                foreach (var userContext in realUserContexts)
+                foreach (var userContext in onlineUserContexts)
 	            {
+                    if (userContext == except)
+                        continue;
+
 		            userContext.Send(messageJson);
 	            }
             }
