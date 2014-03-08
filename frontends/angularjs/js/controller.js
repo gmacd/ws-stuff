@@ -6,5 +6,6 @@ controllers.controller("ChatController", ["$scope", "ChatService", function ($sc
 
 	$scope.SendMessage = function () {
 		ChatService.SendMessage(JSON.stringify({"Type": "newMsg", "Message": $scope.form.newMessage}));
+		$scope.form.newMessage = "";
 	}
 }]);

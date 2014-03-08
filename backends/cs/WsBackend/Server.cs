@@ -56,7 +56,7 @@ namespace WsBackend
         public Server()
         {
             // Add a couple of test messages to test snapshot
-            var user1 = new User("dummy1");
+            /*var user1 = new User("dummy1");
             var dummyContext1 = new UserContext(new Context(null, new TcpClient("www.bbc.co.uk", 80)));
             _users[dummyContext1] = user1;
             var user2 = new User("dummy2");
@@ -72,7 +72,7 @@ namespace WsBackend
             new Timer(_ => {
                 var msg = AddMessage(user1, "tick");
                 BroadcastMessage(msg);
-            }, null, 2000, 2000);
+            }, null, 2000, 2000);*/
         }
 
 
@@ -117,7 +117,7 @@ namespace WsBackend
                 if (msg.TryGetValue("Message", out message))
                 {
                     var newMessage = AddMessage(_users[context], message.Value<string>());
-                    BroadcastMessage(newMessage, context);
+                    BroadcastMessage(newMessage);
                 }
             }
         }
@@ -153,10 +153,9 @@ namespace WsBackend
         }
 
         /// <summary>
-        /// Broadcast message to all users.  If except is not null, then
-        /// this user will be excluded from the broadcast.
+        /// Broadcast message to all users.
         /// </summary>
-        void BroadcastMessage(Message message, UserContext except = null)
+        void BroadcastMessage(Message message)
         {
             lock (_usersLock)
             {
@@ -168,9 +167,6 @@ namespace WsBackend
                     .Select(kvp => kvp.Key);
                 foreach (var userContext in onlineUserContexts)
 	            {
-                    if (userContext == except)
-                        continue;
-
 		            userContext.Send(messageJson);
 	            }
             }
