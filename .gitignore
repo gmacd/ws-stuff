@@ -1,0 +1,4 @@
+backends/cs/WsBackend/bin/
+backends/cs/WsBackend/obj/
+backends/cs/WsBackend/packages/
+*.suo
