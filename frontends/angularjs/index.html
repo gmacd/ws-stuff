@@ -20,8 +20,10 @@
 			</div>
 		</div>
 
-		<form ng-submit="SendMessage()">
-			<input id="msg" ng-model="form.newMessage">
+		<form>
+			<textarea id="chatinput"
+					  ng-model="form.newMessage"
+					  ng-keyup="submitMessage($event.keyCode)"></textarea>
 		</form>
 	</body>
 </html>

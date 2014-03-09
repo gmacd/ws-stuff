@@ -32,14 +32,13 @@ services.factory("ChatService", ['$q', '$rootScope', function($q, $rootScope) {
 					messageJson.Msgs.forEach(function (message, i, array) {
 						$rootScope.messages.push(message);
 					});
-					
+
 					scrollToBottom("chatview");
 				})
 				break;
 
 			case "msg":
 				// New message received
-				console.log(">> " + service.Id);
 				$rootScope.$apply(function () {
 					$rootScope.messages.push(messageJson);
 
@@ -47,10 +46,9 @@ services.factory("ChatService", ['$q', '$rootScope', function($q, $rootScope) {
 				})
 				break;
 		}
-		console.log(JSON.parse(message.data));
 	};
 
-	service.SendMessage = function (message) {
+	service.sendMessage = function (message) {
 		service.WebSocket.send(message);
 	};
 
