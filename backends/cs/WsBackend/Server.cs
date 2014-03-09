@@ -98,6 +98,9 @@ namespace WsBackend
         public void OnDisconnect(UserContext context)
         {
             Console.WriteLine("Disconnect: " + context.ClientAddress.ToString());
+            User user;
+            if (_users.TryGetValue(context, out user))
+                user.Online = false;
         }
 
         public void OnSend(UserContext context)
@@ -113,11 +116,29 @@ namespace WsBackend
             JToken type;
             if (msg.TryGetValue("Type", out type) && type.Value<string>() == "newMsg")
             {
-                JToken message;
-                if (msg.TryGetValue("Message", out message))
+                JToken messageToken;
+                if (msg.TryGetValue("Message", out messageToken))
                 {
-                    var newMessage = AddMessage(_users[context], message.Value<string>());
-                    BroadcastMessage(newMessage);
+                    var message = messageToken.Value<string>();
+
+                    // Requests
+                    switch (message)
+                    {
+                        case "?online":
+                            // List online users
+                            var names =
+                                _users.ToArray()
+                                .Where(u => u.Value.Online)
+                                .Select(u => u.Value.Name);
+                            SendRequestResponse(string.Join(", ", names), context);
+                            break;
+
+                        default:
+                            // Normal message - broadcast to all
+                            var newMessage = AddMessage(_users[context], message);
+                            BroadcastMessage(newMessage);
+                            break;
+                    }
                 }
             }
         }
@@ -170,6 +191,16 @@ namespace WsBackend
 		            userContext.Send(messageJson);
 	            }
             }
+        }
+
+        /// <summary>
+        /// Send the response to a request to a single user.
+        /// </summary>
+        void SendRequestResponse(string response, UserContext destinationContext)
+        {
+            var messageJson = JsonConvert.SerializeObject(
+                new { Type = "msg", Msg = response, User = "System" });
+            destinationContext.Send(messageJson);
         }
     }
 }

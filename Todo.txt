@@ -1,6 +1,0 @@
-Todo
-
- - Track online status
-   - Only send messages to those online
-   - Send connect/disconnect messages to users
-   

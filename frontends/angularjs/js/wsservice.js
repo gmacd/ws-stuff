@@ -27,12 +27,17 @@ services.factory("ChatService", ['$q', '$rootScope', function($q, $rootScope) {
 			case "snapshot":
 				// Snapshot of messages received on connect
 				$rootScope.$apply(function () {
+					// We shouldn't be modifying the list of messages in the root scope,
+					// they should be a member of the ChatService, but I haven't been
+					// able to bind to that yet...
 					$rootScope.messages.length = 0;
 					$rootScope.messages.push({"User": "System", "Msg": "Connected"});
 					messageJson.Msgs.forEach(function (message, i, array) {
 						$rootScope.messages.push(message);
 					});
 
+					// This should be in the controller, executed when the message list
+					// is modified, but again, I haven't been able to do that yet.
 					scrollToBottom("chatview");
 				})
 				break;
