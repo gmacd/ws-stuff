@@ -14,3 +14,14 @@
 	bottom: 100%;
 	position: absolute;
 }
+
+.sysmsg
+{
+	font-weight: bold;
+	color: red;
+}
+
+.msg
+{
+	color: blue;
+}

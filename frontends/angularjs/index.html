@@ -16,7 +16,7 @@
 	<body ng-controller="ChatController">
 		<div id="chatview">
 			<div ng-repeat="message in messages">
-				<span>[{{message.User}}] </span><span>{{message.Msg}}</span>
+				<span ng-class="(message.User == 'System') ? 'sysmsg' : 'msg'">[{{message.User}}] </span><span>{{message.Msg}}</span>
 			</div>
 		</div>
 
